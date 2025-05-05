@@ -1,7 +1,10 @@
 import argparse
 import json
-from fastapi import FastAPI
-from fastapi_mcp import FastApiMCP
+import os
+from dotenv import load_dotenv
+from fastapi import FastAPI,Depends, HTTPException, status
+from fastapi_mcp import FastApiMCP, AuthConfig
+from fastapi.security import HTTPBearer,HTTPAuthorizationCredentials
 
 from pydantic import BaseModel, AnyHttpUrl
 import ssl
@@ -10,11 +13,34 @@ from datetime import datetime
 from typing import List, Dict, Any
 import asyncio
 
+MCP_SERVER_TOKEN=""
+
+security = HTTPBearer()
+load_dotenv()
+
+if os.getenv("MCP_SERVER_TOKEN") is None: 
+    exit("MCP_SERVER_TOKEN variable is not set. Please set it in the .env file.")
+else:
+    MCP_SERVER_TOKEN = os.getenv("MCP_SERVER_TOKEN")
+
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    print(token)
+    if token !=  MCP_SERVER_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing token",
+        )
+
 app = FastAPI()
 mcp = FastApiMCP(
     app,
     name="MCP Server for SSL certificate checker tool",
     description="Tool to check SSL certificates and return whether they are valid or when they expire",
+    auth_config=AuthConfig(
+        dependencies=[Depends(verify_token)],
+    ),
 )
 mcp.mount()
 
@@ -65,7 +91,7 @@ def get_ssl_cert_details(hostname: str, port: int = 443) -> Dict[str, Any]:
             "subject": None
         }
 
-@app.post("/check-ssl",operation_id="check_ssl_certificate")
+@app.post("/check-ssl",dependencies=[Depends(verify_token)],operation_id="check_ssl_certificate")
 async def check_ssl_certificates(data: URLList):
     result = {
         "valid": [],
