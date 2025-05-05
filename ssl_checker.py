@@ -1,6 +1,8 @@
 import argparse
 import json
 from fastapi import FastAPI
+from fastapi_mcp import FastApiMCP
+
 from pydantic import BaseModel, AnyHttpUrl
 import ssl
 import socket
@@ -9,6 +11,12 @@ from typing import List, Dict, Any
 import asyncio
 
 app = FastAPI()
+mcp = FastApiMCP(
+    app,
+    name="MCP Server for SSL certificate checker tool",
+    description="Tool to check SSL certificates and return whether they are valid or when they expire",
+)
+mcp.mount()
 
 class URLList(BaseModel):
     urls: List[AnyHttpUrl]
@@ -57,7 +65,7 @@ def get_ssl_cert_details(hostname: str, port: int = 443) -> Dict[str, Any]:
             "subject": None
         }
 
-@app.post("/check-ssl")
+@app.post("/check-ssl",operation_id="check_ssl_certificate")
 async def check_ssl_certificates(data: URLList):
     result = {
         "valid": [],
@@ -119,6 +127,7 @@ def run_cli_mode():
         print("Invalid URL(s) provided:")
         print(ve)
 
+mcp.setup_server()
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and not sys.argv[1].startswith("--"):
