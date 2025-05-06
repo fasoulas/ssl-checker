@@ -1,15 +1,15 @@
 import argparse
 import json
 import os
-
+import sys
+import asyncio
+from typing import List
 from dotenv import load_dotenv
 from fastapi import FastAPI,Depends, HTTPException, status
 from fastapi_mcp import FastApiMCP, AuthConfig
 from fastapi.security import HTTPBearer,HTTPAuthorizationCredentials
-from pydantic import BaseModel, AnyHttpUrl
-from typing import List
-import asyncio
-import domain.ssl_checker as ssl_checker
+from pydantic import BaseModel, AnyHttpUrl, ValidationError
+from  domain import ssl_checker
 
 
 MCP_SERVER_TOKEN=""
@@ -18,7 +18,7 @@ security = HTTPBearer()
 load_dotenv()
 
 if os.getenv("MCP_SERVER_TOKEN") is None: 
-    exit("MCP_SERVER_TOKEN variable is not set. Please set it as environment variable.")
+    sys.exit("MCP_SERVER_TOKEN variable is not set. Please set it as environment variable.")
 else:
     MCP_SERVER_TOKEN = os.getenv("MCP_SERVER_TOKEN")
 
@@ -93,9 +93,6 @@ def run_cli_mode():
     parser.add_argument("urls", nargs="+", help="List of HTTPS URLs to check (e.g. https://example.com)")
     args = parser.parse_args()
 
-    import asyncio
-    from pydantic import HttpUrl, ValidationError
-
     class DummyInput(BaseModel):
         urls: List[AnyHttpUrl]
 
@@ -110,7 +107,6 @@ def run_cli_mode():
 
 mcp.setup_server()
 if __name__ == "__main__":
-    import sys
     if len(sys.argv) > 1 and not sys.argv[1].startswith("--"):
         run_cli_mode()
     else:

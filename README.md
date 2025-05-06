@@ -3,7 +3,7 @@ All actions below to be taken from the root folder
 
 ## As an MCP Server (locally)
 1. Load environment: **source ./.venv/bin/activate**
-2. Run server: **uvicorn check-ssl-mcp.main:app**
+2. Run server: **uvicorn check_ssl_mcp.main:app**
 
 ## As an MCP server in a Docker comtainer
 1. Build image: **docker build --tag ssl-mcp-server:latest .**

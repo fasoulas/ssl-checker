@@ -46,3 +46,4 @@ def get_ssl_cert_details(hostname: str, port: int = 443) -> Dict[str, Any]:
             "issuer": None,
             "subject": None
         }
+    
