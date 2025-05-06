@@ -1,17 +1,16 @@
 import argparse
 import json
 import os
+
 from dotenv import load_dotenv
 from fastapi import FastAPI,Depends, HTTPException, status
 from fastapi_mcp import FastApiMCP, AuthConfig
 from fastapi.security import HTTPBearer,HTTPAuthorizationCredentials
-
 from pydantic import BaseModel, AnyHttpUrl
-import ssl
-import socket
-from datetime import datetime
-from typing import List, Dict, Any
+from typing import List
 import asyncio
+import domain.ssl_checker as ssl_checker
+
 
 MCP_SERVER_TOKEN=""
 
@@ -19,7 +18,7 @@ security = HTTPBearer()
 load_dotenv()
 
 if os.getenv("MCP_SERVER_TOKEN") is None: 
-    exit("MCP_SERVER_TOKEN variable is not set. Please set it in the .env file.")
+    exit("MCP_SERVER_TOKEN variable is not set. Please set it as environment variable.")
 else:
     MCP_SERVER_TOKEN = os.getenv("MCP_SERVER_TOKEN")
 
@@ -47,50 +46,6 @@ mcp.mount()
 class URLList(BaseModel):
     urls: List[AnyHttpUrl]
 
-def parse_cn(cert_part: List) -> str:
-    for tup in cert_part:
-        for key, value in tup:
-            if key == 'commonName':
-                return value
-    return "N/A"
-
-def get_ssl_cert_details(hostname: str, port: int = 443) -> Dict[str, Any]:
-    try:
-        context = ssl.create_default_context()
-        with socket.create_connection((hostname, port), timeout=5) as sock:
-            with context.wrap_socket(sock, server_hostname=hostname) as ssock:
-                cert = ssock.getpeercert()
-                if not cert:
-                    raise ValueError("No certificate received")
-
-                not_after = datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
-                now = datetime.utcnow()
-                delta = (not_after - now).days
-
-                issuer_cn = parse_cn(cert.get('issuer', []))
-                subject_cn = parse_cn(cert.get('subject', []))
-
-                if delta >= 0:
-                    status = "valid"
-                    field = {"expires_in": delta}
-                else:
-                    status = "expired"
-                    field = {"expired": -delta}
-
-                return {
-                    "status": status,
-                    **field,
-                    "issuer": issuer_cn,
-                    "subject": subject_cn
-                }
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Error: {str(e)}",
-            "issuer": None,
-            "subject": None
-        }
-
 @app.post("/check-ssl",dependencies=[Depends(verify_token)],operation_id="check_ssl_certificate")
 async def check_ssl_certificates(data: URLList):
     result = {
@@ -109,7 +64,7 @@ async def check_ssl_certificates(data: URLList):
 
         hostname = url_obj.host
         port = url_obj.port or 443
-        cert_info = await asyncio.to_thread(get_ssl_cert_details, hostname, port)
+        cert_info = await asyncio.to_thread(ssl_checker.get_ssl_cert_details, hostname, port)
 
         entry = {
             "url": url_str,
