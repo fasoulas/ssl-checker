@@ -8,10 +8,8 @@ from google.adk.agents import Agent
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 print(f"Parent directory: {parent_dir}")
 sys.path.insert(0, parent_dir)
-import server.app
+from domain import ssl_checker
 
-# check_ssl_certificates(data: URLList):
-# def get_ssl_cert_details(hostname: str, port: int = 443) -> Dict[str, Any]:
 def get_ssl_details(hostname: str, port: int = 443) -> Dict[str, Any]:
     """Returns the details of an SLL certificate.
 
@@ -22,7 +20,7 @@ def get_ssl_details(hostname: str, port: int = 443) -> Dict[str, Any]:
     Returns:
         dict: status and result or error msg.
     """
-    return server.app.get_ssl_cert_details(hostname, port)
+    return ssl_checker.get_ssl_cert_details(hostname, port)
 
 root_agent = Agent(
     name="weather_time_agent",
